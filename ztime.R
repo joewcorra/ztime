@@ -22,6 +22,7 @@ if (!file.exists(telework_file)) {
 }
 
 
+
 # Define UI
 ui <- fluidPage(
   titlePanel("Telework Tracker"),
