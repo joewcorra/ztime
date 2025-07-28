@@ -12,7 +12,11 @@ library(tidyr)
 
 telework_file <- "data/telework_log.csv"
 
-pay_periods <- read_csv("data/pay_periods.csv") |>
+pay_periods <- read_csv("data/pay_periods.csv", 
+                        col_types = cols(
+  pay_period = col_character(),
+  start_date = col_character(),
+  end_date = col_character())) |>
   mutate(pay_period = as_factor(pay_period), 
     start_date = mdy(start_date) |> as_date(), 
          end_date = mdy(end_date) |> as_date())
@@ -24,11 +28,15 @@ if (!file.exists(telework_file)) {
   write_csv(telework_log, telework_file)
 }
 
-telework_log <- read_csv(telework_file)
+telework_log <- read_csv(telework_file, 
+                         col_types = cols(
+                           req_date = col_character(),
+                           req_hours = col_integer())) |>
+  mutate(req_date = ymd(req_date) |> as_date())
 
 # Load current data and get pay periods with a fuzzy join
 telework_requests <- pay_periods |>
-  fuzzy_left_join(telework_log, 
+  fuzzy_left_join(telework_log,
                   by = c("start_date" = "req_date", 
                          "end_date" = "req_date"), 
                   match_fun = list(`<=`, `>=`))
@@ -46,21 +54,31 @@ df <- telework_requests |>
   
 log <- telework_log
 
-# Define UI
-ui <- fluidPage(
+# Define UI----------------------------------------------------
+ui <- fluidPage( 
   titlePanel("Telework Tracker"),
-  sidebarLayout(
-    sidebarPanel(
-      dateInput("new_date", "Telework Date:"),
-      numericInput("new_hours", "Hours:", value = 1, min = 1, max = 24),
-      actionButton("submit", "Submit"), 
-      actionButton("save_data", "Save Requests to CSV")
+  tabsetPanel(
+    tabPanel("Submit Request",
+             sidebarLayout(
+               sidebarPanel(
+                 dateInput("new_date", "Telework Date:"),
+                 numericInput("new_hours", "Hours:", value = 1, min = 1, max = 12),
+                 actionButton("submit", "Submit"),
+                 actionButton("save_data", "Save Results to CSV")
+               ),
+               mainPanel(DTOutput("table"))
+             )
     ),
-    mainPanel(
-      DTOutput("table")
+    tabPanel("Telework Log",
+             fluidRow(
+               column(12,
+                      DTOutput("log_table")
+               )
+             )
     )
   )
 )
+
 
 # Define Server
 server <- function(input, output, session) {
@@ -71,12 +89,11 @@ server <- function(input, output, session) {
   
   observeEvent(input$submit, {
     
-    log <- telework_log()
-    log <- log |>
+    log <- telework_log() |>
     add_row(req_date = input$new_date, 
             req_hours = input$new_hours)
   
-    telework_log(log)
+    telework_log(log) 
     
   })
   
@@ -99,12 +116,14 @@ server <- function(input, output, session) {
 
     telework_data(df)
   })
+
+  
   
   output$table <- renderDT({
     # df <- telework_data()
     datatable(
       telework_data(),
-      options = list(pageLength = 10),
+      options = list(pageLength = 50),
       rownames = FALSE
     ) |>
       formatStyle(
@@ -121,11 +140,23 @@ server <- function(input, output, session) {
     
     showNotification("Telework requests saved!", type = "message")
   })
+  
+  output$log_table <- renderDT({ 
+    # if (nrow(df2) == 0) return(NULL)
+    
+    log2 <- telework_log() 
+    
+    
+    datatable(log2, 
+              escape = FALSE, 
+              selection = "none", 
+    )
+  })
+  
+
+  
 }
+
 
 shinyApp(ui, server)
 
-
-# Retain only telework rows with date/hr requests
-# telework_log <- telework_log |>
-#   filter(!is.na(req_date))
