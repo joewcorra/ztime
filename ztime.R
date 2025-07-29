@@ -10,6 +10,7 @@ library(fuzzyjoin)
 library(forcats)
 library(tidyr)
 
+
 telework_file <- "data/telework_log.csv"
 
 pay_periods <- read_csv("data/pay_periods.csv", 
@@ -24,7 +25,8 @@ pay_periods <- read_csv("data/pay_periods.csv",
 # Initialize telework request log if file doesn't exist
 if (!file.exists(telework_file)) {
   telework_log <- tibble(req_date = c("2025-01-22", "2025-01-23"), 
-                         req_hours = c(3, 4))
+                         req_hours = c(3, 4), 
+                         row_id = c(1, 2))
   write_csv(telework_log, telework_file)
 }
 
@@ -70,10 +72,8 @@ ui <- fluidPage(
              )
     ),
     tabPanel("Telework Log",
-             fluidRow(
-               column(12,
-                      DTOutput("log_table")
-               )
+                      mainPanel(DTOutput("log_table"),
+                                actionButton("delete", "Delete Requests")
              )
     )
   )
@@ -86,36 +86,43 @@ server <- function(input, output, session) {
   # Reactive value to hold telework data
   telework_data <- reactiveVal(df)
   telework_log <- reactiveVal(log)
-  
-  observeEvent(input$submit, {
-    
-    log <- telework_log() |>
-    add_row(req_date = input$new_date, 
-            req_hours = input$new_hours)
-  
-    telework_log(log) 
-    
-  })
-  
-  observeEvent(input$submit, {
-    
-    # Find the row that matches the date
-    df <- telework_data() 
-    
-    df <- df |>
-      mutate(pp_telework_hours = if_else(
-        input$new_date >= start_date & input$new_date <= end_date,
-        pp_telework_hours + input$new_hours,
-        pp_telework_hours
-      )) |>
-      # Recalculate the 2-period rolling sum
-      arrange(start_date) |>
-      mutate(telework_hours_2_periods = slide_sum(
-        pp_telework_hours, before = 1, after = 1
-      ))
 
+
+  observeEvent(input$submit, {
+
+    telework_log <- telework_log() |>
+    add_row(req_date = input$new_date,
+            req_hours = input$new_hours)
+
+    telework_log(telework_log)
+
+  })
+
+  observeEvent(input$submit, {
+    new_log <- telework_log() |>
+      add_row(req_date = input$new_date,
+              req_hours = input$new_hours)
+    
+    telework_log(new_log)
+    
+    updated_requests <- pay_periods |>
+      fuzzy_left_join(new_log,
+                      by = c("start_date" = "req_date",
+                             "end_date" = "req_date"),
+                      match_fun = list(`<=`, `>=`))
+    
+    df <- updated_requests |>
+      group_by(pay_period, start_date, end_date) |>
+      summarize(pp_telework_hours = sum(req_hours), .groups = "drop") |>
+      arrange(start_date) |>
+      mutate(
+        pp_telework_hours = replace_na(pp_telework_hours, 0),
+        telework_hours_2_periods = slide_sum(pp_telework_hours, before = 1, after = 1, na_rm = TRUE)
+      )
+    
     telework_data(df)
   })
+  
 
   
   
@@ -132,6 +139,8 @@ server <- function(input, output, session) {
       )
   })
   
+
+  
   observeEvent(input$save_data, {
     write_csv(telework_log() |> 
                 filter(req_hours > 0) |> 
@@ -141,19 +150,41 @@ server <- function(input, output, session) {
     showNotification("Telework requests saved!", type = "message")
   })
   
-  output$log_table <- renderDT({ 
-    # if (nrow(df2) == 0) return(NULL)
-    
-    log2 <- telework_log() 
-    
-    
-    datatable(log2, 
-              escape = FALSE, 
-              selection = "none", 
-    )
+  output$log_table <- renderDT({
+
+    # log2 <- telework_log()
+   datatable(telework_log(), 
+             selection = 'multiple',  # Allow multiple row selection
+             options = list(dom = 't') # Only show the table (no search, pagination, etc.)
+   )
+   
   })
   
-
+  observeEvent(input$delete, {
+    selected_rows <- input$log_table_rows_selected
+    if (length(selected_rows) > 0) {
+      new_log <- telework_log()[-selected_rows, ]
+      telework_log(new_log)
+      
+      # Also update telework_data()
+      updated_requests <- pay_periods |>
+        fuzzy_left_join(new_log,
+                        by = c("start_date" = "req_date",
+                               "end_date" = "req_date"),
+                        match_fun = list(`<=`, `>=`))
+      
+      df <- updated_requests |>
+        group_by(pay_period, start_date, end_date) |>
+        summarize(pp_telework_hours = sum(req_hours), .groups = "drop") |>
+        arrange(start_date) |>
+        mutate(
+          pp_telework_hours = replace_na(pp_telework_hours, 0),
+          telework_hours_2_periods = slide_sum(pp_telework_hours, before = 1, after = 1, na_rm = TRUE)
+        )
+      
+      telework_data(df)
+    }
+  })
   
 }
 
