@@ -25,8 +25,8 @@ pay_periods <- read_csv("data/pay_periods.csv",
 # Initialize telework request log if file doesn't exist
 if (!file.exists(telework_file)) {
   telework_log <- tibble(req_date = c("2025-01-22", "2025-01-23"), 
-                         req_hours = c(3, 4), 
-                         row_id = c(1, 2))
+                         req_hours = c(0, 0), 
+                         row_id = c(0, 0))
   write_csv(telework_log, telework_file)
 }
 
@@ -88,23 +88,15 @@ server <- function(input, output, session) {
   telework_log <- reactiveVal(log)
 
 
-  observeEvent(input$submit, {
-
-    telework_log <- telework_log() |>
-    add_row(req_date = input$new_date,
-            req_hours = input$new_hours)
-
-    telework_log(telework_log)
-
-  })
-
-  observeEvent(input$submit, {
+  observeEvent(input$submit, { 
+    # Add to telework_log
     new_log <- telework_log() |>
       add_row(req_date = input$new_date,
               req_hours = input$new_hours)
     
     telework_log(new_log)
     
+    # Update telework_data from the full log
     updated_requests <- pay_periods |>
       fuzzy_left_join(new_log,
                       by = c("start_date" = "req_date",
