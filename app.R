@@ -64,7 +64,7 @@ ui <- fluidPage(
              sidebarLayout(
                sidebarPanel(
                  dateInput("new_date", "Telework Date:"),
-                 numericInput("new_hours", "Hours:", value = 1, min = 1, max = 12),
+                 numericInput("new_hours", "Hours:", value = 1, min = 0.5, max = 12),
                  actionButton("submit", "Submit"),
                  actionButton("save_data", "Save Results to CSV")
                ),
@@ -146,8 +146,7 @@ server <- function(input, output, session) {
 
     # log2 <- telework_log()
    datatable(telework_log(), 
-             selection = 'multiple',  # Allow multiple row selection
-             options = list(dom = 't') # Only show the table (no search, pagination, etc.)
+             selection = 'multiple' # Allow multiple row selection
    )
    
   })
