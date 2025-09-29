@@ -29,6 +29,6 @@ install.packages(c(
 
 shiny::runApp()
 
-## NOTE: As of 30 July 2025, this app only covers pay periods for CY 2025. Multi-year functionality is planned for future updates. 
+**NOTE: As of 30 July 2025, this app only covers pay periods for CY 2025. Multi-year functionality is planned for future updates.**
 
 Please notify me of any problems you experience while using this Shiny app. I also welcome any suggestions for improvements. 
