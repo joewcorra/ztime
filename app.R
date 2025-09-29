@@ -51,7 +51,7 @@ df <- telework_requests |>
   arrange(start_date) |>
   mutate(pp_telework_hours = replace_na(pp_telework_hours, 0), 
     telework_hours_2_periods = slide_sum(
-    pp_telework_hours, before = 1, after = 1, na_rm = TRUE
+    pp_telework_hours, before = 1, na_rm = TRUE
   ))
   
 log <- telework_log
@@ -109,7 +109,7 @@ server <- function(input, output, session) {
       arrange(start_date) |>
       mutate(
         pp_telework_hours = replace_na(pp_telework_hours, 0),
-        telework_hours_2_periods = slide_sum(pp_telework_hours, before = 1, after = 1, na_rm = TRUE)
+        telework_hours_2_periods = slide_sum(pp_telework_hours, before = 1, na_rm = TRUE)
       )
     
     telework_data(df)
@@ -170,7 +170,7 @@ server <- function(input, output, session) {
         arrange(start_date) |>
         mutate(
           pp_telework_hours = replace_na(pp_telework_hours, 0),
-          telework_hours_2_periods = slide_sum(pp_telework_hours, before = 1, after = 1, na_rm = TRUE)
+          telework_hours_2_periods = slide_sum(pp_telework_hours, before = 1, na_rm = TRUE)
         )
       
       telework_data(df)
