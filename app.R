@@ -33,7 +33,7 @@ if (!file.exists(telework_file)) {
 telework_log <- read_csv(telework_file, 
                          col_types = cols(
                            req_date = col_character(),
-                           req_hours = col_integer())) |>
+                           req_hours = col_double())) |>
   mutate(req_date = ymd(req_date) |> as_date())
 
 # Load current data and get pay periods with a fuzzy join
